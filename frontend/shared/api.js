@@ -7,7 +7,7 @@
 // In production: replace with your Railway backend URL
 const API_BASE = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
-    : 'adventurous-celebration-production-e39c.up.railway.app';
+    : 'https://adventurous-celebration-production-e39c.up.railway.app';
 
 
 /**
