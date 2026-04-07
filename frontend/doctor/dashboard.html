@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Doctor Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .input-field { background: rgba(11,15,26,0.6); border: 1px solid rgba(141,163,194,0.15); color: #e8eef8; }
+        .input-field:focus { border-color: #00d4aa; box-shadow: 0 0 0 3px rgba(0,212,170,0.1); outline: none; }
+    </style>
+</head>
+<body x-data="doctorDashboard()" x-init="init()">
+    <div x-html="getSidebar('doctor', 'dashboard')"></div>
+    <main class="main-content">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Doctor Dashboard</h1>
+                <p class="text-[#8da3c2] text-sm mt-1">Welcome, <span x-text="doctorName" class="text-teal-400"></span></p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center"><i data-lucide="users" class="w-5 h-5 text-teal-400"></i></div>
+                    <div>
+                        <p class="text-2xl font-bold" x-text="consents.filter(c => c.status === 'approved').length"></p>
+                        <p class="text-xs text-[#4a6288]">Active Patients</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center"><i data-lucide="calendar" class="w-5 h-5 text-amber-400"></i></div>
+                    <div>
+                        <p class="text-2xl font-bold" x-text="appointments.filter(a => a.status === 'scheduled').length"></p>
+                        <p class="text-xs text-[#4a6288]">Today's Appointments</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><i data-lucide="shield" class="w-5 h-5 text-purple-400"></i></div>
+                    <div>
+                        <p class="text-2xl font-bold" x-text="consents.filter(c => c.status === 'pending').length"></p>
+                        <p class="text-xs text-[#4a6288]">Pending Consents</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Patient Access -->
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">Patient Access</h2>
+                <div class="space-y-3">
+                    <template x-for="consent in consents.filter(c => c.status === 'approved')" :key="consent.id">
+                        <a :href="'patient-view.html?patient_id=' + consent.patient_id" class="flex items-center justify-between p-3 rounded-xl bg-[#0B0F1A]/40 hover:bg-[#0B0F1A]/60 transition-all cursor-pointer block">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center">
+                                    <i data-lucide="user" class="w-4 h-4 text-teal-400"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Patient #<span x-text="consent.patient_id"></span></p>
+                                    <p class="text-xs text-[#4a6288]">Access: <span x-text="consent.access_level" class="text-teal-400"></span></p>
+                                </div>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-[#4a6288]"></i>
+                        </a>
+                    </template>
+                    <p x-show="consents.filter(c => c.status === 'approved').length === 0" class="text-sm text-[#4a6288] text-center py-4">No active patient access</p>
+                </div>
+
+                <!-- Request Consent -->
+                <div class="mt-4 pt-4 border-t border-[#1e293b]">
+                    <h3 class="text-sm font-medium mb-3">Request Patient Access</h3>
+                    <form @submit.prevent="requestConsent()" class="flex gap-2">
+                        <input x-model="consentReq.patient_id" type="number" placeholder="Patient ID" required class="input-field flex-1 px-3 py-2 rounded-xl text-sm">
+                        <select x-model="consentReq.access_level" class="input-field px-3 py-2 rounded-xl text-sm">
+                            <option value="full">Full</option>
+                            <option value="view_only">View Only</option>
+                        </select>
+                        <button type="submit" class="px-4 py-2 rounded-xl text-sm bg-teal-500 text-[#0B0F1A] font-medium hover:bg-teal-400 transition-all">Request</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">Upcoming Appointments</h2>
+                <div class="space-y-3">
+                    <template x-for="appt in appointments.filter(a => a.status === 'scheduled')" :key="appt.id">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-[#0B0F1A]/40">
+                            <div>
+                                <p class="text-sm font-medium">Patient #<span x-text="appt.patient_id"></span></p>
+                                <p class="text-xs text-[#4a6288]" x-text="formatDateTime(appt.scheduled_at)"></p>
+                                <p class="text-xs text-[#8da3c2] capitalize" x-text="appt.appointment_type"></p>
+                            </div>
+                            <span x-html="statusPill(appt.status)"></span>
+                        </div>
+                    </template>
+                    <p x-show="appointments.filter(a => a.status === 'scheduled').length === 0" class="text-sm text-[#4a6288] text-center py-4">No upcoming appointments</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function doctorDashboard() {
+            return {
+                doctorName: '',
+                consents: [],
+                appointments: [],
+                consentReq: { patient_id: '', access_level: 'full', reason: '' },
+                async init() {
+                    guardRoute(['doctor']);
+                    try {
+                        const me = await apiGet('/api/auth/me');
+                        this.doctorName = me.full_name;
+                        this.consents = await apiGet('/api/consents') || [];
+                        this.appointments = await apiGet('/api/appointments') || [];
+                    } catch(e) { console.error(e); }
+                    this.$nextTick(() => lucide.createIcons());
+                },
+                async requestConsent() {
+                    try {
+                        await apiPost('/api/consents', this.consentReq);
+                        showToast('Consent request sent!');
+                        this.consents = await apiGet('/api/consents') || [];
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Prescriptions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+    </style>
+</head>
+<body x-data="prescriptionsPage()" x-init="init()">
+    <div x-html="getSidebar('patient', 'prescriptions')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Prescriptions</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">View your active and past prescriptions</p>
+
+        <!-- Filter tabs -->
+        <div class="flex gap-2 mb-6">
+            <button @click="filter = 'active'" :class="filter === 'active' ? 'bg-teal-500/20 text-teal-400 border-teal-500/30' : 'bg-[#131c2e] text-[#8da3c2] border-[#1e293b]'" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all">Active</button>
+            <button @click="filter = 'all'" :class="filter === 'all' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-[#131c2e] text-[#8da3c2] border-[#1e293b]'" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all">All</button>
+        </div>
+
+        <div class="space-y-4">
+            <template x-for="rx in filteredRx" :key="rx.id">
+                <div class="glass-card p-5">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                <i data-lucide="pill" class="w-6 h-6 text-blue-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold" x-text="rx.drug_name"></h3>
+                                <p class="text-sm text-[#8da3c2]"><span x-text="rx.dosage"></span> · <span x-text="rx.frequency"></span></p>
+                                <p x-show="rx.duration" class="text-xs text-[#4a6288] mt-0.5">Duration: <span x-text="rx.duration"></span></p>
+                                <p x-show="rx.instructions" class="text-xs text-[#4a6288] mt-0.5">📝 <span x-text="rx.instructions"></span></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span x-html="statusPill(rx.status)"></span>
+                            <p class="text-xs text-[#4a6288] mt-2" x-text="'Prescribed: ' + formatDate(rx.created_at)"></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <p x-show="filteredRx.length === 0" class="text-center text-[#4a6288] py-12">No prescriptions found</p>
+        </div>
+    </main>
+    <script>
+        function prescriptionsPage() {
+            return {
+                prescriptions: [],
+                filter: 'active',
+                get filteredRx() {
+                    if (this.filter === 'active') return this.prescriptions.filter(r => r.status === 'active');
+                    return this.prescriptions;
+                },
+                async init() {
+                    guardRoute(['patient']);
+                    try { this.prescriptions = await apiGet('/api/prescriptions') || []; } catch(e) { console.error(e); }
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            };
+        }
+    </script>
+</body>
+</html>

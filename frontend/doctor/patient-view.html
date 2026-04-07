@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Patient View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .input-field { background: rgba(11,15,26,0.6); border: 1px solid rgba(141,163,194,0.15); color: #e8eef8; }
+        .input-field:focus { border-color: #00d4aa; box-shadow: 0 0 0 3px rgba(0,212,170,0.1); outline: none; }
+        .tab-btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .tab-btn:not(.active) { color: #8da3c2; }
+        .tab-btn:hover:not(.active) { background: rgba(141,163,194,0.05); }
+    </style>
+</head>
+<body x-data="patientView()" x-init="init()">
+    <div x-html="getSidebar('doctor', 'patients')"></div>
+    <main class="main-content">
+        <!-- Patient Header -->
+        <div class="flex items-start justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-blue-500/20 flex items-center justify-center">
+                    <i data-lucide="user" class="w-8 h-8 text-teal-400"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold" x-text="patient.user ? patient.user.full_name : 'Patient #' + patientId"></h1>
+                    <div class="flex items-center gap-3 mt-1 text-sm text-[#8da3c2]">
+                        <span x-text="patient.gender || '—'"></span>
+                        <span>·</span>
+                        <span x-text="patient.blood_group || '—'"></span>
+                        <span>·</span>
+                        <span x-text="patient.dob ? formatDate(patient.dob) : '—'"></span>
+                    </div>
+                </div>
+            </div>
+            <a href="dashboard.html" class="text-sm text-[#8da3c2] hover:text-teal-400 flex items-center gap-1">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+            </a>
+        </div>
+
+        <!-- Quick Info Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="glass-card p-3 text-center">
+                <p class="text-xs text-[#4a6288]">Allergies</p>
+                <p class="text-sm font-medium mt-1" x-text="(patient.allergies || []).join(', ') || 'None'"></p>
+            </div>
+            <div class="glass-card p-3 text-center">
+                <p class="text-xs text-[#4a6288]">Conditions</p>
+                <p class="text-sm font-medium mt-1" x-text="(patient.chronic_conditions || []).join(', ') || 'None'"></p>
+            </div>
+            <div class="glass-card p-3 text-center">
+                <p class="text-xs text-[#4a6288]">Active Rx</p>
+                <p class="text-sm font-medium mt-1 text-blue-400" x-text="prescriptions.filter(r => r.status === 'active').length"></p>
+            </div>
+            <div class="glass-card p-3 text-center">
+                <p class="text-xs text-[#4a6288]">Lab Reports</p>
+                <p class="text-sm font-medium mt-1 text-purple-400" x-text="labs.length"></p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-6 bg-[#131c2e] p-1.5 rounded-xl inline-flex">
+            <button @click="tab = 'vitals'" :class="tab === 'vitals' ? 'active' : ''" class="tab-btn">Vitals</button>
+            <button @click="tab = 'records'" :class="tab === 'records' ? 'active' : ''" class="tab-btn">Records</button>
+            <button @click="tab = 'rx'" :class="tab === 'rx' ? 'active' : ''" class="tab-btn">Prescriptions</button>
+            <button @click="tab = 'labs'" :class="tab === 'labs' ? 'active' : ''" class="tab-btn">Labs</button>
+        </div>
+
+        <!-- Vitals Tab -->
+        <div x-show="tab === 'vitals'">
+            <div class="glass-card p-6 mb-6">
+                <h2 class="font-semibold mb-4">Vitals Trend</h2>
+                <div class="h-64"><canvas id="vitalsChart"></canvas></div>
+            </div>
+            <!-- Record Vitals Form -->
+            <div class="glass-card p-6">
+                <h3 class="font-semibold mb-4">Record New Vitals</h3>
+                <form @submit.prevent="recordVitals()" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">BP Systolic</label><input x-model.number="vitalForm.bp_systolic" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">BP Diastolic</label><input x-model.number="vitalForm.bp_diastolic" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Heart Rate</label><input x-model.number="vitalForm.heart_rate" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Blood Sugar</label><input x-model.number="vitalForm.blood_sugar" type="number" step="0.1" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Temperature</label><input x-model.number="vitalForm.temperature" type="number" step="0.1" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">SpO2</label><input x-model.number="vitalForm.spo2" type="number" step="0.1" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Weight</label><input x-model.number="vitalForm.weight" type="number" step="0.1" class="input-field w-full px-3 py-2 rounded-xl text-sm"></div>
+                    <div class="flex items-end"><button type="submit" class="px-6 py-2 rounded-xl text-sm bg-teal-500 text-[#0B0F1A] font-medium hover:bg-teal-400 transition-all w-full">Save Vitals</button></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Records Tab -->
+        <div x-show="tab === 'records'">
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold">Medical Records</h2>
+                    <a :href="'notes.html?patient_id=' + patientId" class="text-sm text-teal-400 hover:text-teal-300">+ Add Note</a>
+                </div>
+                <div class="space-y-3">
+                    <template x-for="rec in records" :key="rec.id">
+                        <div class="p-4 rounded-xl bg-[#0B0F1A]/40">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-teal-500/20 text-teal-400 mr-2" x-text="rec.record_type"></span>
+                                    <span class="font-medium text-sm" x-text="rec.title"></span>
+                                    <p x-show="rec.icd10_code" class="text-xs text-[#4a6288] mt-1">ICD-10: <span x-text="rec.icd10_code"></span></p>
+                                </div>
+                                <span class="text-xs text-[#4a6288]" x-text="formatDate(rec.created_at)"></span>
+                            </div>
+                            <p x-show="rec.notes" class="text-sm text-[#8da3c2] mt-2" x-text="rec.notes"></p>
+                        </div>
+                    </template>
+                    <p x-show="records.length === 0" class="text-center text-[#4a6288] py-8">No medical records</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prescriptions Tab -->
+        <div x-show="tab === 'rx'">
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold">Prescriptions</h2>
+                    <a :href="'prescribe.html?patient_id=' + patientId" class="text-sm text-teal-400 hover:text-teal-300">+ Prescribe</a>
+                </div>
+                <div class="space-y-3">
+                    <template x-for="rx in prescriptions" :key="rx.id">
+                        <div class="p-4 rounded-xl bg-[#0B0F1A]/40 flex items-center justify-between">
+                            <div>
+                                <p class="font-medium text-sm" x-text="rx.drug_name"></p>
+                                <p class="text-xs text-[#8da3c2]"><span x-text="rx.dosage"></span> · <span x-text="rx.frequency"></span></p>
+                            </div>
+                            <span x-html="statusPill(rx.status)"></span>
+                        </div>
+                    </template>
+                    <p x-show="prescriptions.length === 0" class="text-center text-[#4a6288] py-8">No prescriptions</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Labs Tab -->
+        <div x-show="tab === 'labs'">
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">Lab Reports</h2>
+                <div class="space-y-3">
+                    <template x-for="lab in labs" :key="lab.id">
+                        <div class="p-4 rounded-xl bg-[#0B0F1A]/40">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="font-medium text-sm" x-text="lab.test_name"></p>
+                                    <p class="text-xs text-[#4a6288]" x-text="lab.lab_name"></p>
+                                    <p x-show="lab.result_summary" class="text-sm text-[#8da3c2] mt-1" x-text="lab.result_summary"></p>
+                                </div>
+                                <div class="text-right">
+                                    <span x-html="statusPill(lab.status)"></span>
+                                    <p class="text-xs text-[#4a6288] mt-1" x-text="formatDate(lab.report_date)"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="labs.length === 0" class="text-center text-[#4a6288] py-8">No lab reports</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function patientView() {
+            return {
+                patientId: new URLSearchParams(window.location.search).get('patient_id') || 1,
+                patient: {},
+                vitals: [],
+                records: [],
+                prescriptions: [],
+                labs: [],
+                tab: 'vitals',
+                vitalForm: {},
+                async init() {
+                    guardRoute(['doctor']);
+                    try {
+                        this.patient = await apiGet(`/api/patients/${this.patientId}`) || {};
+                        this.vitals = await apiGet(`/api/patients/${this.patientId}/vitals`) || [];
+                        this.records = await apiGet(`/api/records?patient_id=${this.patientId}`) || [];
+                        this.prescriptions = await apiGet(`/api/prescriptions?patient_id=${this.patientId}`) || [];
+                        this.labs = await apiGet(`/api/lab-reports?patient_id=${this.patientId}`) || [];
+                        this.$nextTick(() => { lucide.createIcons(); this.renderChart(); });
+                    } catch(e) { console.error(e); this.$nextTick(() => lucide.createIcons()); }
+                },
+                renderChart() {
+                    const ctx = document.getElementById('vitalsChart');
+                    if (!ctx || this.vitals.length === 0) return;
+                    const sorted = [...this.vitals].reverse();
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: sorted.map(v => formatDate(v.recorded_at)),
+                            datasets: [
+                                { label: 'BP Systolic', data: sorted.map(v => v.bp_systolic), borderColor: '#00d4aa', tension: 0.4, fill: false },
+                                { label: 'Heart Rate', data: sorted.map(v => v.heart_rate), borderColor: '#3b82f6', tension: 0.4, fill: false },
+                                { label: 'Blood Sugar', data: sorted.map(v => v.blood_sugar), borderColor: '#f59e0b', tension: 0.4, fill: false }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#8da3c2' } } },
+                            scales: { x: { ticks: { color: '#4a6288' }, grid: { color: 'rgba(141,163,194,0.06)' } }, y: { ticks: { color: '#4a6288' }, grid: { color: 'rgba(141,163,194,0.06)' } } }
+                        }
+                    });
+                },
+                async recordVitals() {
+                    try {
+                        await apiPost(`/api/patients/${this.patientId}/vitals`, this.vitalForm);
+                        showToast('Vitals recorded');
+                        this.vitalForm = {};
+                        this.vitals = await apiGet(`/api/patients/${this.patientId}/vitals`) || [];
+                    } catch(e) { showToast(e.message, 'error'); }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

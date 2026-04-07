@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Upload Lab Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script><script src="../shared/auth.js"></script><script src="../shared/components.js"></script>
+    <style>
+        body{font-family:'DM Sans',sans-serif;background:#0B0F1A;color:#e8eef8}h1,h2,h3{font-family:'Syne',sans-serif}.sidebar{background:#111827;border-right:1px solid rgba(141,163,194,0.1);width:260px;min-height:100vh;padding:1.5rem 1rem;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:40}.sidebar-nav{flex:1;display:flex;flex-direction:column;gap:4px;margin-top:2rem}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;color:#8da3c2;text-decoration:none;font-size:14px;transition:all 0.2s}.nav-item:hover{background:rgba(0,212,170,0.08);color:#e8eef8}.nav-item.active{background:rgba(0,212,170,0.12);color:#00d4aa}.nav-item i{width:20px;height:20px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{color:#00d4aa;width:32px;height:32px}.logo-text{font-family:'Syne';font-size:1.25rem;font-weight:700;background:linear-gradient(135deg,#00d4aa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sidebar-footer{border-top:1px solid rgba(141,163,194,0.1);padding-top:1rem}.logout-btn{color:#ef4444!important}.logout-btn:hover{background:rgba(239,68,68,0.1)!important}.main-content{margin-left:260px;padding:2rem}.glass-card{background:#131c2e;border:1px solid rgba(141,163,194,0.08);border-radius:1rem}.input-field{background:rgba(11,15,26,0.6);border:1px solid rgba(141,163,194,0.15);color:#e8eef8}.input-field:focus{border-color:#00d4aa;box-shadow:0 0 0 3px rgba(0,212,170,0.1);outline:none}
+    </style>
+</head>
+<body x-data="uploadPage()" x-init="init()">
+    <div x-html="getSidebar('lab_tech', 'upload-report')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Upload Lab Report</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">Submit patient lab results and upload PDF reports</p>
+        <div class="glass-card p-6 max-w-2xl">
+            <form @submit.prevent="uploadReport()" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Patient ID</label><input x-model="form.patient_id" type="number" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Test Name</label><input x-model="form.test_name" type="text" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="e.g. HbA1c"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Lab Name</label><input x-model="form.lab_name" type="text" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="e.g. SRL Diagnostics"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Report Date</label><input x-model="form.report_date" type="date" class="input-field w-full px-3 py-2.5 rounded-xl text-sm"></div>
+                </div>
+                <div><label class="block text-xs text-[#8da3c2] mb-1">Result Summary</label><textarea x-model="form.result_summary" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" rows="2" placeholder="Brief summary of results"></textarea></div>
+                <div>
+                    <label class="block text-xs text-[#8da3c2] mb-1">PDF Report (optional)</label>
+                    <input type="file" accept=".pdf" @change="form.file = $event.target.files[0]" class="text-sm text-[#8da3c2]">
+                </div>
+
+                <!-- Result Values -->
+                <div class="border-t border-[#1e293b] pt-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-medium">Result Parameters</h3>
+                        <button type="button" @click="addParam()" class="text-xs text-teal-400 hover:text-teal-300">+ Add Parameter</button>
+                    </div>
+                    <template x-for="(param, idx) in params" :key="idx">
+                        <div class="grid grid-cols-5 gap-2 mb-2">
+                            <input x-model="param.parameter_name" placeholder="Parameter" class="input-field px-2 py-1.5 rounded-lg text-xs">
+                            <input x-model="param.value" placeholder="Value" class="input-field px-2 py-1.5 rounded-lg text-xs">
+                            <input x-model="param.unit" placeholder="Unit" class="input-field px-2 py-1.5 rounded-lg text-xs">
+                            <input x-model="param.reference_range" placeholder="Reference" class="input-field px-2 py-1.5 rounded-lg text-xs">
+                            <label class="flex items-center gap-1 text-xs text-red-400"><input type="checkbox" x-model="param.is_abnormal"> Abnormal</label>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-medium bg-purple-500 text-white hover:bg-purple-400 transition-all w-full">Upload Report</button>
+            </form>
+        </div>
+    </main>
+    <script>
+        function uploadPage(){
+            return{
+                form:{patient_id:'',test_name:'',lab_name:'',report_date:'',result_summary:'',file:null},
+                params:[],
+                init(){guardRoute(['lab_tech','doctor','admin']);lucide.createIcons();},
+                addParam(){this.params.push({parameter_name:'',value:'',unit:'',reference_range:'',is_abnormal:false});},
+                async uploadReport(){
+                    try{
+                        const fd=new FormData();
+                        fd.append('patient_id',this.form.patient_id);fd.append('test_name',this.form.test_name);
+                        if(this.form.lab_name)fd.append('lab_name',this.form.lab_name);
+                        if(this.form.report_date)fd.append('report_date',this.form.report_date);
+                        if(this.form.result_summary)fd.append('result_summary',this.form.result_summary);
+                        if(this.form.file)fd.append('file',this.form.file);
+                        const report=await apiUpload('/api/lab-reports',fd);
+                        if(this.params.length>0&&report){
+                            const validParams=this.params.filter(p=>p.parameter_name&&p.value);
+                            if(validParams.length>0)await apiPost(`/api/lab-reports/${report.id}/values`,validParams);
+                        }
+                        showToast('Report uploaded!');
+                        this.form={patient_id:'',test_name:'',lab_name:'',report_date:'',result_summary:'',file:null};
+                        this.params=[];
+                    }catch(e){showToast(e.message,'error');}
+                }
+            };
+        }
+    </script>
+</body>
+</html>

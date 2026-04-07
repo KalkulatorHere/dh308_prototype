@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Lab Reports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+    </style>
+</head>
+<body x-data="labsPage()" x-init="init()">
+    <div x-html="getSidebar('patient', 'lab-reports')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Lab Reports</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">View your laboratory test results and reports</p>
+
+        <div class="space-y-4">
+            <template x-for="report in reports" :key="report.id">
+                <div class="glass-card p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                                <i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold" x-text="report.test_name"></h3>
+                                <p class="text-xs text-[#4a6288]" x-text="report.lab_name || 'Lab'"></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span x-html="statusPill(report.status)"></span>
+                            <p class="text-xs text-[#4a6288] mt-1" x-text="formatDate(report.report_date)"></p>
+                        </div>
+                    </div>
+                    <p x-show="report.result_summary" class="text-sm text-[#8da3c2] mb-4" x-text="report.result_summary"></p>
+                    
+                    <!-- Result Values Table -->
+                    <div x-show="report.result_values && report.result_values.length > 0" class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-[#1e293b]">
+                                    <th class="text-left py-2 text-[#4a6288] font-medium">Parameter</th>
+                                    <th class="text-left py-2 text-[#4a6288] font-medium">Value</th>
+                                    <th class="text-left py-2 text-[#4a6288] font-medium">Unit</th>
+                                    <th class="text-left py-2 text-[#4a6288] font-medium">Reference</th>
+                                    <th class="text-left py-2 text-[#4a6288] font-medium">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="val in report.result_values" :key="val.id">
+                                    <tr class="border-b border-[#1e293b]/50">
+                                        <td class="py-2.5" x-text="val.parameter_name"></td>
+                                        <td class="py-2.5 font-semibold" :class="val.is_abnormal ? 'text-red-400' : 'text-teal-400'" x-text="val.value"></td>
+                                        <td class="py-2.5 text-[#8da3c2]" x-text="val.unit || '—'"></td>
+                                        <td class="py-2.5 text-[#4a6288]" x-text="val.reference_range || '—'"></td>
+                                        <td class="py-2.5">
+                                            <span x-show="val.is_abnormal" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/20 text-red-400">Abnormal</span>
+                                            <span x-show="!val.is_abnormal" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-500/20 text-emerald-400">Normal</span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div x-show="report.file_path" class="mt-4">
+                        <a :href="'http://localhost:8000/api/lab-reports/' + report.id + '/download'" target="_blank" 
+                            class="inline-flex items-center gap-2 text-sm text-teal-400 hover:text-teal-300 transition-colors">
+                            <i data-lucide="download" class="w-4 h-4"></i> Download PDF
+                        </a>
+                    </div>
+                </div>
+            </template>
+            <p x-show="reports.length === 0" class="text-center text-[#4a6288] py-12">No lab reports found</p>
+        </div>
+    </main>
+    <script>
+        function labsPage() {
+            return {
+                reports: [],
+                async init() {
+                    guardRoute(['patient']);
+                    try {
+                        this.reports = await apiGet('/api/lab-reports') || [];
+                    } catch(e) { console.error(e); }
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            };
+        }
+    </script>
+</body>
+</html>

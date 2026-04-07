@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Appointments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .input-field { background: rgba(11,15,26,0.6); border: 1px solid rgba(141,163,194,0.15); color: #e8eef8; transition: all 0.3s; }
+        .input-field:focus { border-color: #00d4aa; box-shadow: 0 0 0 3px rgba(0,212,170,0.1); outline: none; }
+    </style>
+</head>
+<body x-data="appointmentsPage()" x-init="init()">
+    <div x-html="getSidebar('patient', 'appointments')"></div>
+    <main class="main-content">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Appointments</h1>
+                <p class="text-[#8da3c2] text-sm mt-1">Manage your upcoming and past appointments</p>
+            </div>
+            <button @click="showForm = !showForm" class="px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-teal-500 to-blue-500 text-white hover:shadow-lg hover:shadow-teal-500/20 transition-all">
+                <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> Book Appointment
+            </button>
+        </div>
+
+        <!-- Book Form -->
+        <div x-show="showForm" x-transition class="glass-card p-6 mb-6">
+            <h3 class="font-semibold mb-4">Book New Appointment</h3>
+            <form @submit.prevent="bookAppointment()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-[#8da3c2] mb-1">Provider ID</label>
+                    <input x-model="form.provider_id" type="number" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-[#8da3c2] mb-1">Type</label>
+                    <select x-model="form.appointment_type" class="input-field w-full px-3 py-2.5 rounded-xl text-sm">
+                        <option value="in_person">In-Person</option>
+                        <option value="video">Video Call</option>
+                        <option value="lab">Lab Visit</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-[#8da3c2] mb-1">Date & Time</label>
+                    <input x-model="form.scheduled_at" type="datetime-local" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-[#8da3c2] mb-1">Duration (min)</label>
+                    <input x-model="form.duration_minutes" type="number" value="30" class="input-field w-full px-3 py-2.5 rounded-xl text-sm">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs text-[#8da3c2] mb-1">Notes</label>
+                    <input x-model="form.notes" type="text" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="Optional notes">
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-medium bg-teal-500 text-[#0B0F1A] hover:bg-teal-400 transition-all">Book</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Appointments List -->
+        <div class="space-y-4">
+            <template x-for="appt in appointments" :key="appt.id">
+                <div class="glass-card p-5 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+                            :class="appt.appointment_type === 'video' ? 'bg-blue-500/10' : appt.appointment_type === 'lab' ? 'bg-purple-500/10' : 'bg-teal-500/10'">
+                            <i :data-lucide="appt.appointment_type === 'video' ? 'video' : appt.appointment_type === 'lab' ? 'flask-conical' : 'building-2'" class="w-5 h-5"
+                                :class="appt.appointment_type === 'video' ? 'text-blue-400' : appt.appointment_type === 'lab' ? 'text-purple-400' : 'text-teal-400'"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-sm capitalize" x-text="appt.appointment_type.replace('_', ' ') + ' Appointment'"></h3>
+                            <p class="text-xs text-[#4a6288]" x-text="formatDateTime(appt.scheduled_at)"></p>
+                            <p x-show="appt.notes" class="text-xs text-[#8da3c2] mt-0.5" x-text="appt.notes"></p>
+                            <a x-show="appt.meet_link" :href="appt.meet_link" target="_blank" class="text-xs text-blue-400 hover:text-blue-300">Join Meeting →</a>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span x-html="statusPill(appt.status)"></span>
+                        <button x-show="appt.status === 'scheduled'" @click="cancelAppt(appt.id)" class="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-all">Cancel</button>
+                    </div>
+                </div>
+            </template>
+            <p x-show="appointments.length === 0" class="text-center text-[#4a6288] py-12">No appointments found</p>
+        </div>
+    </main>
+    <script>
+        function appointmentsPage() {
+            return {
+                appointments: [],
+                showForm: false,
+                form: { provider_id: '', appointment_type: 'in_person', scheduled_at: '', duration_minutes: 30, notes: '' },
+                async init() {
+                    guardRoute(['patient']);
+                    await this.loadAppointments();
+                    this.$nextTick(() => lucide.createIcons());
+                },
+                async loadAppointments() {
+                    try { this.appointments = await apiGet('/api/appointments') || []; } catch(e) { console.error(e); }
+                },
+                async bookAppointment() {
+                    try {
+                        await apiPost('/api/appointments', this.form);
+                        showToast('Appointment booked!');
+                        this.showForm = false;
+                        await this.loadAppointments();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                },
+                async cancelAppt(id) {
+                    if (!confirm('Cancel this appointment?')) return;
+                    try {
+                        await apiDelete(`/api/appointments/${id}`);
+                        showToast('Appointment cancelled');
+                        await this.loadAppointments();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

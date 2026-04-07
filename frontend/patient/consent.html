@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Consent Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .btn-approve { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .btn-approve:hover { background: rgba(34,197,94,0.25); }
+        .btn-deny { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .btn-deny:hover { background: rgba(239,68,68,0.25); }
+    </style>
+</head>
+<body x-data="consentPage()" x-init="init()">
+    <div x-html="getSidebar('patient', 'consents')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Consent Management</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">Control who accesses your health data</p>
+
+        <!-- Tab Filter -->
+        <div class="flex gap-2 mb-6">
+            <button @click="tab = 'pending'" :class="tab === 'pending' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-[#131c2e] text-[#8da3c2] border-[#1e293b]'" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all">
+                Pending <span x-show="pending.length > 0" class="ml-1 bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded-full text-xs" x-text="pending.length"></span>
+            </button>
+            <button @click="tab = 'active'" :class="tab === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-[#131c2e] text-[#8da3c2] border-[#1e293b]'" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all">Active</button>
+            <button @click="tab = 'history'" :class="tab === 'history' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-[#131c2e] text-[#8da3c2] border-[#1e293b]'" class="px-4 py-2 rounded-xl text-sm font-medium border transition-all">History</button>
+        </div>
+
+        <!-- Pending Consents -->
+        <div x-show="tab === 'pending'" class="space-y-4">
+            <template x-for="consent in pending" :key="consent.id">
+                <div class="glass-card p-6 border-l-4 border-l-amber-400">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
+                                <h3 class="font-semibold">Consent Request</h3>
+                            </div>
+                            <p class="text-sm text-[#8da3c2]">Provider ID: <span x-text="consent.provider_id"></span></p>
+                            <p class="text-sm text-[#8da3c2]">Access Level: <span class="text-amber-400 font-medium" x-text="consent.access_level"></span></p>
+                            <p x-show="consent.reason" class="text-sm text-[#4a6288] mt-1" x-text="'Reason: ' + consent.reason"></p>
+                            <p class="text-xs text-[#4a6288] mt-2" x-text="'Requested: ' + formatDate(consent.created_at)"></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="approveConsent(consent.id)" class="btn-approve px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5">
+                                <i data-lucide="check" class="w-4 h-4"></i> Approve
+                            </button>
+                            <button @click="denyConsent(consent.id)" class="btn-deny px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5">
+                                <i data-lucide="x" class="w-4 h-4"></i> Deny
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <p x-show="pending.length === 0" class="text-center text-[#4a6288] py-12">No pending consent requests</p>
+        </div>
+
+        <!-- Active Consents -->
+        <div x-show="tab === 'active'" class="space-y-4">
+            <template x-for="consent in active" :key="consent.id">
+                <div class="glass-card p-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i>
+                                <h3 class="font-semibold">Active Grant</h3>
+                            </div>
+                            <p class="text-sm text-[#8da3c2]">Provider ID: <span x-text="consent.provider_id"></span></p>
+                            <p class="text-sm text-[#8da3c2]">Access: <span class="text-emerald-400 font-medium" x-text="consent.access_level"></span></p>
+                            <p class="text-xs text-[#4a6288] mt-1">Granted: <span x-text="formatDate(consent.granted_at)"></span></p>
+                            <p x-show="consent.expires_at" class="text-xs text-[#4a6288]">Expires: <span x-text="formatDate(consent.expires_at)"></span></p>
+                        </div>
+                        <button @click="revokeConsent(consent.id)" class="btn-deny px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5">
+                            <i data-lucide="shield-off" class="w-4 h-4"></i> Revoke
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <p x-show="active.length === 0" class="text-center text-[#4a6288] py-12">No active consents</p>
+        </div>
+
+        <!-- History -->
+        <div x-show="tab === 'history'" class="space-y-4">
+            <template x-for="consent in allConsents" :key="consent.id">
+                <div class="glass-card p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium">Provider ID: <span x-text="consent.provider_id"></span></p>
+                            <p class="text-xs text-[#4a6288]">Access: <span x-text="consent.access_level"></span> · <span x-text="formatDate(consent.created_at)"></span></p>
+                        </div>
+                        <span x-html="statusPill(consent.status)"></span>
+                    </div>
+                </div>
+            </template>
+            <p x-show="allConsents.length === 0" class="text-center text-[#4a6288] py-12">No consent history</p>
+        </div>
+    </main>
+    <script>
+        function consentPage() {
+            return {
+                allConsents: [],
+                pending: [],
+                active: [],
+                tab: 'pending',
+                async init() {
+                    guardRoute(['patient']);
+                    await this.loadConsents();
+                    this.$nextTick(() => lucide.createIcons());
+                },
+                async loadConsents() {
+                    try {
+                        this.allConsents = await apiGet('/api/consents') || [];
+                        this.pending = this.allConsents.filter(c => c.status === 'pending');
+                        this.active = this.allConsents.filter(c => c.status === 'approved');
+                    } catch(e) { console.error(e); }
+                },
+                async approveConsent(id) {
+                    try {
+                        await apiPatch(`/api/consents/${id}/approve`);
+                        showToast('Consent approved');
+                        await this.loadConsents();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                },
+                async denyConsent(id) {
+                    try {
+                        await apiPatch(`/api/consents/${id}/deny`);
+                        showToast('Consent denied');
+                        await this.loadConsents();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                },
+                async revokeConsent(id) {
+                    if (!confirm('Are you sure you want to revoke this consent?')) return;
+                    try {
+                        await apiPatch(`/api/consents/${id}/revoke`);
+                        showToast('Consent revoked');
+                        await this.loadConsents();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

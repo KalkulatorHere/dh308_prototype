@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Patient Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1, h2, h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .stat-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; }
+        .stat-card:hover { border-color: rgba(0,212,170,0.2); transform: translateY(-2px); }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+    </style>
+</head>
+<body x-data="dashboard()" x-init="init()">
+    <div x-html="getSidebar('patient', 'dashboard')"></div>
+
+    <main class="main-content">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Welcome back, <span x-text="userName" class="text-teal-400"></span></h1>
+                <p class="text-[#8da3c2] text-sm mt-1">Here's your health overview</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <button class="p-2.5 rounded-xl bg-[#131c2e] border border-[#1e293b] hover:border-teal-500/30 transition-all">
+                        <i data-lucide="bell" class="w-5 h-5 text-[#8da3c2]"></i>
+                    </button>
+                    <span x-show="pendingConsents > 0" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center" x-text="pendingConsents"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <div class="stat-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                        <i data-lucide="activity" class="w-5 h-5 text-teal-400"></i>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold" x-text="vitals.bp_systolic ? vitals.bp_systolic + '/' + vitals.bp_diastolic : '—'"></p>
+                <p class="text-[#8da3c2] text-sm">Blood Pressure</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <i data-lucide="pill" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold" x-text="activeRx"></p>
+                <p class="text-[#8da3c2] text-sm">Active Prescriptions</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                        <i data-lucide="calendar" class="w-5 h-5 text-amber-400"></i>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold" x-text="upcomingAppts"></p>
+                <p class="text-[#8da3c2] text-sm">Upcoming Appointments</p>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-purple-400"></i>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold" x-text="pendingConsents"></p>
+                <p class="text-[#8da3c2] text-sm">Pending Consents</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Vitals Chart -->
+            <div class="lg:col-span-2 glass-card p-6">
+                <h2 class="text-lg font-semibold mb-4">Vitals Trend</h2>
+                <div class="relative h-64">
+                    <canvas id="vitalsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Timeline -->
+            <div class="glass-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Recent Activity</h2>
+                    <a href="timeline.html" class="text-xs text-teal-400 hover:text-teal-300">View all →</a>
+                </div>
+                <div class="space-y-4">
+                    <template x-for="event in timeline.slice(0, 5)" :key="event.id + event.type">
+                        <div class="flex items-start gap-3 p-3 rounded-lg bg-[#0B0F1A]/40">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                :class="event.type === 'prescription' ? 'bg-blue-500/10' : event.type === 'lab_report' ? 'bg-purple-500/10' : event.type === 'appointment' ? 'bg-amber-500/10' : 'bg-teal-500/10'">
+                                <i :data-lucide="event.type === 'prescription' ? 'pill' : event.type === 'lab_report' ? 'flask-conical' : event.type === 'appointment' ? 'calendar' : 'file-text'" class="w-4 h-4"
+                                    :class="event.type === 'prescription' ? 'text-blue-400' : event.type === 'lab_report' ? 'text-purple-400' : event.type === 'appointment' ? 'text-amber-400' : 'text-teal-400'"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium truncate" x-text="event.title"></p>
+                                <p class="text-xs text-[#4a6288]" x-text="formatDate(event.date)"></p>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="timeline.length === 0" class="text-sm text-[#4a6288] text-center py-4">No recent activity</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Vitals Detail -->
+        <div class="glass-card p-6 mt-6">
+            <h2 class="text-lg font-semibold mb-4">Latest Vitals</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">Heart Rate</p>
+                    <p class="text-lg font-bold text-teal-400" x-text="vitals.heart_rate || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">bpm</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">Blood Sugar</p>
+                    <p class="text-lg font-bold text-amber-400" x-text="vitals.blood_sugar || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">mg/dL</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">SpO2</p>
+                    <p class="text-lg font-bold text-blue-400" x-text="vitals.spo2 || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">%</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">Temperature</p>
+                    <p class="text-lg font-bold text-red-400" x-text="vitals.temperature || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">°F</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">Weight</p>
+                    <p class="text-lg font-bold text-purple-400" x-text="vitals.weight || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">kg</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">Height</p>
+                    <p class="text-lg font-bold text-green-400" x-text="vitals.height || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">cm</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">BP Sys</p>
+                    <p class="text-lg font-bold text-teal-400" x-text="vitals.bp_systolic || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">mmHg</p>
+                </div>
+                <div class="text-center p-3 rounded-xl bg-[#0B0F1A]/40">
+                    <p class="text-xs text-[#4a6288] mb-1">BP Dia</p>
+                    <p class="text-lg font-bold text-teal-400" x-text="vitals.bp_diastolic || '—'"></p>
+                    <p class="text-xs text-[#4a6288]">mmHg</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function dashboard() {
+            return {
+                userName: '',
+                patientId: null,
+                vitals: {},
+                activeRx: 0,
+                upcomingAppts: 0,
+                pendingConsents: 0,
+                timeline: [],
+                allVitals: [],
+
+                async init() {
+                    guardRoute(['patient']);
+                    
+                    try {
+                        const me = await apiGet('/api/auth/me');
+                        this.userName = me.full_name.split(' ')[0];
+
+                        // Get patient profile to find patient ID
+                        const token = decodeToken();
+                        const userId = token.sub;
+
+                        // Get summary
+                        // We need the patient ID — find it from the summary endpoint
+                        // First enumerate: the patient ID equals the patient table row
+                        const summaryResp = await apiGet(`/api/patients/1/summary`).catch(() => null);
+                        if (summaryResp) {
+                            this.patientId = summaryResp.patient.id;
+                            this.activeRx = summaryResp.active_prescriptions;
+                            this.upcomingAppts = summaryResp.upcoming_appointments;
+                            this.pendingConsents = summaryResp.pending_consents;
+                            if (summaryResp.latest_vitals) {
+                                this.vitals = summaryResp.latest_vitals;
+                            }
+                        }
+
+                        // Try fetching with the correct patient ID
+                        if (this.patientId) {
+                            // Get timeline
+                            this.timeline = await apiGet(`/api/patients/${this.patientId}/timeline`).catch(() => []) || [];
+
+                            // Get vitals for chart
+                            this.allVitals = await apiGet(`/api/patients/${this.patientId}/vitals`).catch(() => []) || [];
+                            this.renderChart();
+                        }
+                    } catch (e) {
+                        console.error('Dashboard load error:', e);
+                    }
+
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                renderChart() {
+                    const ctx = document.getElementById('vitalsChart');
+                    if (!ctx || this.allVitals.length === 0) return;
+
+                    const labels = this.allVitals.reverse().map(v => formatDate(v.recorded_at));
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [
+                                {
+                                    label: 'BP Systolic',
+                                    data: this.allVitals.map(v => v.bp_systolic),
+                                    borderColor: '#00d4aa',
+                                    backgroundColor: 'rgba(0,212,170,0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Heart Rate',
+                                    data: this.allVitals.map(v => v.heart_rate),
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: 'rgba(59,130,246,0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Blood Sugar',
+                                    data: this.allVitals.map(v => v.blood_sugar),
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'rgba(245,158,11,0.1)',
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: '#8da3c2', font: { size: 11 } } }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#4a6288', font: { size: 10 } }, grid: { color: 'rgba(141,163,194,0.06)' } },
+                                y: { ticks: { color: '#4a6288', font: { size: 10 } }, grid: { color: 'rgba(141,163,194,0.06)' } }
+                            }
+                        }
+                    });
+                }
+            };
+        }
+    </script>
+</body>
+</html>

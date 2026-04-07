@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Lab Queue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script><script src="../shared/auth.js"></script><script src="../shared/components.js"></script>
+    <style>
+        body{font-family:'DM Sans',sans-serif;background:#0B0F1A;color:#e8eef8}h1,h2,h3{font-family:'Syne',sans-serif}.sidebar{background:#111827;border-right:1px solid rgba(141,163,194,0.1);width:260px;min-height:100vh;padding:1.5rem 1rem;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:40}.sidebar-nav{flex:1;display:flex;flex-direction:column;gap:4px;margin-top:2rem}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;color:#8da3c2;text-decoration:none;font-size:14px;transition:all 0.2s}.nav-item:hover{background:rgba(0,212,170,0.08);color:#e8eef8}.nav-item.active{background:rgba(0,212,170,0.12);color:#00d4aa}.nav-item i{width:20px;height:20px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{color:#00d4aa;width:32px;height:32px}.logo-text{font-family:'Syne';font-size:1.25rem;font-weight:700;background:linear-gradient(135deg,#00d4aa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sidebar-footer{border-top:1px solid rgba(141,163,194,0.1);padding-top:1rem}.logout-btn{color:#ef4444!important}.logout-btn:hover{background:rgba(239,68,68,0.1)!important}.main-content{margin-left:260px;padding:2rem}.glass-card{background:#131c2e;border:1px solid rgba(141,163,194,0.08);border-radius:1rem}
+    </style>
+</head>
+<body x-data="queuePage()" x-init="init()">
+    <div x-html="getSidebar('lab_tech', 'queue')"></div>
+    <main class="main-content">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Lab Queue</h1>
+                <p class="text-[#8da3c2] text-sm mt-1">All lab reports and their status</p>
+            </div>
+            <a href="upload.html" class="px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:shadow-lg transition-all">
+                <i data-lucide="upload" class="w-4 h-4 inline mr-1"></i> Upload Report
+            </a>
+        </div>
+        <div class="glass-card overflow-hidden">
+            <table class="w-full text-sm">
+                <thead><tr class="border-b border-[#1e293b]">
+                    <th class="text-left p-4 text-[#4a6288] font-medium">ID</th>
+                    <th class="text-left p-4 text-[#4a6288] font-medium">Patient</th>
+                    <th class="text-left p-4 text-[#4a6288] font-medium">Test</th>
+                    <th class="text-left p-4 text-[#4a6288] font-medium">Lab</th>
+                    <th class="text-left p-4 text-[#4a6288] font-medium">Date</th>
+                    <th class="text-left p-4 text-[#4a6288] font-medium">Status</th>
+                </tr></thead>
+                <tbody>
+                    <template x-for="r in reports" :key="r.id">
+                        <tr class="border-b border-[#1e293b]/50 hover:bg-[#0B0F1A]/30 transition-colors">
+                            <td class="p-4 text-[#8da3c2]" x-text="r.id"></td>
+                            <td class="p-4" x-text="'#'+r.patient_id"></td>
+                            <td class="p-4 font-medium" x-text="r.test_name"></td>
+                            <td class="p-4 text-[#8da3c2]" x-text="r.lab_name||'—'"></td>
+                            <td class="p-4 text-[#4a6288]" x-text="formatDate(r.report_date)"></td>
+                            <td class="p-4" x-html="statusPill(r.status)"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <p x-show="reports.length===0" class="text-center text-[#4a6288] py-12">No lab reports in queue</p>
+        </div>
+    </main>
+    <script>
+        function queuePage(){
+            return{
+                reports:[],
+                async init(){guardRoute(['lab_tech','admin']);try{this.reports=await apiGet('/api/lab-reports')||[];}catch(e){}this.$nextTick(()=>lucide.createIcons());}
+            };
+        }
+    </script>
+</body>
+</html>

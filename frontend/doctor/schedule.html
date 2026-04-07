@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Schedule</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script><script src="../shared/auth.js"></script><script src="../shared/components.js"></script>
+    <style>
+        body{font-family:'DM Sans',sans-serif;background:#0B0F1A;color:#e8eef8}h1,h2,h3{font-family:'Syne',sans-serif}.sidebar{background:#111827;border-right:1px solid rgba(141,163,194,0.1);width:260px;min-height:100vh;padding:1.5rem 1rem;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:40}.sidebar-nav{flex:1;display:flex;flex-direction:column;gap:4px;margin-top:2rem}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;color:#8da3c2;text-decoration:none;font-size:14px;transition:all 0.2s}.nav-item:hover{background:rgba(0,212,170,0.08);color:#e8eef8}.nav-item.active{background:rgba(0,212,170,0.12);color:#00d4aa}.nav-item i{width:20px;height:20px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{color:#00d4aa;width:32px;height:32px}.logo-text{font-family:'Syne';font-size:1.25rem;font-weight:700;background:linear-gradient(135deg,#00d4aa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sidebar-footer{border-top:1px solid rgba(141,163,194,0.1);padding-top:1rem}.logout-btn{color:#ef4444!important}.logout-btn:hover{background:rgba(239,68,68,0.1)!important}.main-content{margin-left:260px;padding:2rem}.glass-card{background:#131c2e;border:1px solid rgba(141,163,194,0.08);border-radius:1rem}
+    </style>
+</head>
+<body x-data="schedulePage()" x-init="init()">
+    <div x-html="getSidebar('doctor', 'schedule')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Schedule</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">Manage your appointment schedule</p>
+        <div class="space-y-4">
+            <template x-for="appt in appointments" :key="appt.id">
+                <div class="glass-card p-5 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="appt.appointment_type==='video'?'bg-blue-500/10':appt.appointment_type==='lab'?'bg-purple-500/10':'bg-teal-500/10'">
+                            <i :data-lucide="appt.appointment_type==='video'?'video':appt.appointment_type==='lab'?'flask-conical':'building-2'" class="w-5 h-5" :class="appt.appointment_type==='video'?'text-blue-400':appt.appointment_type==='lab'?'text-purple-400':'text-teal-400'"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-sm">Patient #<span x-text="appt.patient_id"></span></h3>
+                            <p class="text-xs text-[#8da3c2] capitalize" x-text="appt.appointment_type.replace('_',' ')"></p>
+                            <p class="text-xs text-[#4a6288]" x-text="formatDateTime(appt.scheduled_at)"></p>
+                            <p x-show="appt.notes" class="text-xs text-[#4a6288] mt-0.5" x-text="appt.notes"></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span x-html="statusPill(appt.status)"></span>
+                        <template x-if="appt.status==='scheduled'">
+                            <div class="flex gap-1">
+                                <button @click="updateStatus(appt.id,'completed')" class="text-xs px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">Complete</button>
+                                <button @click="updateStatus(appt.id,'no_show')" class="text-xs px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20">No Show</button>
+                                <button @click="updateStatus(appt.id,'cancelled')" class="text-xs px-2 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20">Cancel</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <p x-show="appointments.length===0" class="text-center text-[#4a6288] py-12">No appointments</p>
+        </div>
+    </main>
+    <script>
+        function schedulePage(){
+            return{
+                appointments:[],
+                async init(){guardRoute(['doctor']);await this.load();this.$nextTick(()=>lucide.createIcons());},
+                async load(){try{this.appointments=await apiGet('/api/appointments')||[];}catch(e){}},
+                async updateStatus(id,status){try{await apiPatch(`/api/appointments/${id}/status?status=${status}`);showToast('Status updated');await this.load();this.$nextTick(()=>lucide.createIcons());}catch(e){showToast(e.message,'error');}}
+            };
+        }
+    </script>
+</body>
+</html>

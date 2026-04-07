@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script><script src="../shared/auth.js"></script><script src="../shared/components.js"></script>
+    <style>
+        body{font-family:'DM Sans',sans-serif;background:#0B0F1A;color:#e8eef8}h1,h2,h3{font-family:'Syne',sans-serif}.sidebar{background:#111827;border-right:1px solid rgba(141,163,194,0.1);width:260px;min-height:100vh;padding:1.5rem 1rem;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:40}.sidebar-nav{flex:1;display:flex;flex-direction:column;gap:4px;margin-top:2rem}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;color:#8da3c2;text-decoration:none;font-size:14px;transition:all 0.2s}.nav-item:hover{background:rgba(0,212,170,0.08);color:#e8eef8}.nav-item.active{background:rgba(0,212,170,0.12);color:#00d4aa}.nav-item i{width:20px;height:20px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{color:#00d4aa;width:32px;height:32px}.logo-text{font-family:'Syne';font-size:1.25rem;font-weight:700;background:linear-gradient(135deg,#00d4aa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sidebar-footer{border-top:1px solid rgba(141,163,194,0.1);padding-top:1rem}.logout-btn{color:#ef4444!important}.logout-btn:hover{background:rgba(239,68,68,0.1)!important}.main-content{margin-left:260px;padding:2rem}.stat-card{background:#131c2e;border:1px solid rgba(141,163,194,0.08);border-radius:1rem;padding:1.5rem;transition:all 0.3s}.stat-card:hover{border-color:rgba(0,212,170,0.2);transform:translateY(-2px)}
+    </style>
+</head>
+<body x-data="adminDash()" x-init="init()">
+    <div x-html="getSidebar('admin', 'dashboard')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Admin Dashboard</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">System overview and statistics</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center mb-3"><i data-lucide="users" class="w-5 h-5 text-teal-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_patients"></p>
+                <p class="text-[#8da3c2] text-sm">Total Patients</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3"><i data-lucide="stethoscope" class="w-5 h-5 text-blue-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_providers"></p>
+                <p class="text-[#8da3c2] text-sm">Total Providers</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-3"><i data-lucide="file-text" class="w-5 h-5 text-purple-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_records"></p>
+                <p class="text-[#8da3c2] text-sm">Medical Records</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3"><i data-lucide="shield" class="w-5 h-5 text-amber-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.pending_consents"></p>
+                <p class="text-[#8da3c2] text-sm">Pending Consents</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center mb-3"><i data-lucide="pill" class="w-5 h-5 text-green-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_prescriptions"></p>
+                <p class="text-[#8da3c2] text-sm">Prescriptions</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center mb-3"><i data-lucide="flask-conical" class="w-5 h-5 text-red-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_lab_reports"></p>
+                <p class="text-[#8da3c2] text-sm">Lab Reports</p>
+            </div>
+            <div class="stat-card">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3"><i data-lucide="calendar" class="w-5 h-5 text-indigo-400"></i></div>
+                <p class="text-2xl font-bold" x-text="stats.total_appointments"></p>
+                <p class="text-[#8da3c2] text-sm">Appointments</p>
+            </div>
+        </div>
+    </main>
+    <script>
+        function adminDash(){
+            return{
+                stats:{total_patients:0,total_providers:0,total_records:0,total_prescriptions:0,total_lab_reports:0,total_appointments:0,pending_consents:0},
+                async init(){guardRoute(['admin']);try{this.stats=await apiGet('/api/admin/stats')||this.stats;}catch(e){}this.$nextTick(()=>lucide.createIcons());}
+            };
+        }
+    </script>
+</body>
+</html>

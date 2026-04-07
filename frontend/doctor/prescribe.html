@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Prescribe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script><script src="../shared/auth.js"></script><script src="../shared/components.js"></script>
+    <style>
+        body{font-family:'DM Sans',sans-serif;background:#0B0F1A;color:#e8eef8}h1,h2,h3{font-family:'Syne',sans-serif}.sidebar{background:#111827;border-right:1px solid rgba(141,163,194,0.1);width:260px;min-height:100vh;padding:1.5rem 1rem;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:40}.sidebar-nav{flex:1;display:flex;flex-direction:column;gap:4px;margin-top:2rem}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;color:#8da3c2;text-decoration:none;font-size:14px;transition:all 0.2s}.nav-item:hover{background:rgba(0,212,170,0.08);color:#e8eef8}.nav-item.active{background:rgba(0,212,170,0.12);color:#00d4aa}.nav-item i{width:20px;height:20px}.logo{display:flex;align-items:center;gap:10px}.logo-icon{color:#00d4aa;width:32px;height:32px}.logo-text{font-family:'Syne';font-size:1.25rem;font-weight:700;background:linear-gradient(135deg,#00d4aa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sidebar-footer{border-top:1px solid rgba(141,163,194,0.1);padding-top:1rem}.logout-btn{color:#ef4444!important}.logout-btn:hover{background:rgba(239,68,68,0.1)!important}.main-content{margin-left:260px;padding:2rem}.glass-card{background:#131c2e;border:1px solid rgba(141,163,194,0.08);border-radius:1rem}.input-field{background:rgba(11,15,26,0.6);border:1px solid rgba(141,163,194,0.15);color:#e8eef8}.input-field:focus{border-color:#00d4aa;box-shadow:0 0 0 3px rgba(0,212,170,0.1);outline:none}
+    </style>
+</head>
+<body x-data="prescribePage()" x-init="init()">
+    <div x-html="getSidebar('doctor', 'prescribe')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Prescribe Medication</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">Write prescriptions for patients</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">New Prescription</h2>
+                <form @submit.prevent="createRx()" class="space-y-4">
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Patient ID</label><input x-model="form.patient_id" type="number" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Drug Name</label><input x-model="form.drug_name" type="text" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="e.g. Metformin"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-xs text-[#8da3c2] mb-1">Dosage</label><input x-model="form.dosage" type="text" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="500mg"></div>
+                        <div><label class="block text-xs text-[#8da3c2] mb-1">Frequency</label><input x-model="form.frequency" type="text" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="Twice daily"></div>
+                    </div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Duration</label><input x-model="form.duration" type="text" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="30 days"></div>
+                    <div><label class="block text-xs text-[#8da3c2] mb-1">Instructions</label><textarea x-model="form.instructions" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" rows="2" placeholder="Take after meals"></textarea></div>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-medium bg-blue-500 text-white hover:bg-blue-400 transition-all w-full">Create Prescription</button>
+                </form>
+            </div>
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">Recent Prescriptions</h2>
+                <div class="space-y-3">
+                    <template x-for="rx in prescriptions" :key="rx.id">
+                        <div class="p-4 rounded-xl bg-[#0B0F1A]/40">
+                            <div class="flex items-start justify-between mb-1">
+                                <p class="font-medium text-sm" x-text="rx.drug_name"></p>
+                                <span x-html="statusPill(rx.status)"></span>
+                            </div>
+                            <p class="text-xs text-[#8da3c2]"><span x-text="rx.dosage"></span> · <span x-text="rx.frequency"></span></p>
+                            <p class="text-xs text-[#4a6288] mt-1">Patient #<span x-text="rx.patient_id"></span> · <span x-text="formatDate(rx.created_at)"></span></p>
+                        </div>
+                    </template>
+                    <p x-show="prescriptions.length===0" class="text-center text-[#4a6288] py-8">No prescriptions yet</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function prescribePage() {
+            return {
+                form:{patient_id:new URLSearchParams(location.search).get('patient_id')||'',drug_name:'',dosage:'',frequency:'',duration:'',instructions:''},
+                prescriptions:[],
+                async init(){guardRoute(['doctor']);try{this.prescriptions=await apiGet('/api/prescriptions')||[];}catch(e){}this.$nextTick(()=>lucide.createIcons());},
+                async createRx(){try{await apiPost('/api/prescriptions',this.form);showToast('Prescription created!');this.form.drug_name='';this.form.dosage='';this.form.frequency='';this.form.duration='';this.form.instructions='';this.prescriptions=await apiGet('/api/prescriptions')||[];this.$nextTick(()=>lucide.createIcons());}catch(e){showToast(e.message,'error');}}
+            };
+        }
+    </script>
+</body>
+</html>

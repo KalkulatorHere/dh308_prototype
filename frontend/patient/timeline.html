@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Health Timeline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 1.5rem; border-left: 2px solid rgba(141,163,194,0.1); }
+        .timeline-item:last-child { border-left-color: transparent; }
+        .timeline-dot { position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+    </style>
+</head>
+<body x-data="timelinePage()" x-init="init()">
+    <div x-html="getSidebar('patient', 'timeline')"></div>
+    <main class="main-content">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">Health Timeline</h1>
+                <p class="text-[#8da3c2] text-sm mt-1">Chronological view of all health events</p>
+            </div>
+            <!-- Filter -->
+            <select x-model="filterType" @change="applyFilter()" class="bg-[#131c2e] border border-[#1e293b] rounded-xl px-4 py-2.5 text-sm text-[#8da3c2] focus:border-teal-500/50 outline-none">
+                <option value="">All Events</option>
+                <option value="record">Records</option>
+                <option value="prescription">Prescriptions</option>
+                <option value="lab_report">Lab Reports</option>
+                <option value="appointment">Appointments</option>
+                <option value="vitals">Vitals</option>
+            </select>
+        </div>
+
+        <div class="glass-card p-6">
+            <div class="ml-2">
+                <template x-for="(event, idx) in filtered" :key="idx">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"
+                            :class="event.type === 'prescription' ? 'bg-blue-500/20 border-blue-400' : event.type === 'lab_report' ? 'bg-purple-500/20 border-purple-400' : event.type === 'appointment' ? 'bg-amber-500/20 border-amber-400' : event.type === 'vitals' ? 'bg-green-500/20 border-green-400' : 'bg-teal-500/20 border-teal-400'">
+                        </div>
+                        <div class="bg-[#0B0F1A]/40 rounded-xl p-4 ml-4 hover:bg-[#0B0F1A]/60 transition-all">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium mb-2"
+                                        :class="event.type === 'prescription' ? 'bg-blue-500/20 text-blue-400' : event.type === 'lab_report' ? 'bg-purple-500/20 text-purple-400' : event.type === 'appointment' ? 'bg-amber-500/20 text-amber-400' : event.type === 'vitals' ? 'bg-green-500/20 text-green-400' : 'bg-teal-500/20 text-teal-400'"
+                                        x-text="event.type.replace('_', ' ')"></span>
+                                    <h3 class="text-sm font-semibold" x-text="event.title"></h3>
+                                </div>
+                                <span class="text-xs text-[#4a6288] whitespace-nowrap ml-4" x-text="formatDate(event.date)"></span>
+                            </div>
+                            <div x-show="event.status" class="mt-2" x-html="statusPill(event.status)"></div>
+                        </div>
+                    </div>
+                </template>
+                <p x-show="filtered.length === 0" class="text-sm text-[#4a6288] text-center py-8">No timeline events found</p>
+            </div>
+        </div>
+    </main>
+    <script>
+        function timelinePage() {
+            return {
+                events: [],
+                filtered: [],
+                filterType: '',
+                async init() {
+                    guardRoute(['patient']);
+                    try {
+                        this.events = await apiGet('/api/patients/1/timeline') || [];
+                        this.filtered = this.events;
+                    } catch(e) { console.error(e); }
+                    this.$nextTick(() => lucide.createIcons());
+                },
+                applyFilter() {
+                    this.filtered = this.filterType ? this.events.filter(e => e.type === this.filterType) : this.events;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            };
+        }
+    </script>
+</body>
+</html>

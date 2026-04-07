@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCore — Clinical Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../shared/api.js"></script>
+    <script src="../shared/auth.js"></script>
+    <script src="../shared/components.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #0B0F1A; color: #e8eef8; }
+        h1,h2,h3 { font-family: 'Syne', sans-serif; }
+        .sidebar { background: #111827; border-right: 1px solid rgba(141,163,194,0.1); width: 260px; min-height: 100vh; padding: 1.5rem 1rem; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 40; }
+        .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; margin-top: 2rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; color: #8da3c2; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+        .nav-item:hover { background: rgba(0,212,170,0.08); color: #e8eef8; }
+        .nav-item.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
+        .nav-item i { width: 20px; height: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { color: #00d4aa; width: 32px; height: 32px; }
+        .logo-text { font-family: 'Syne'; font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, #00d4aa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-footer { border-top: 1px solid rgba(141,163,194,0.1); padding-top: 1rem; }
+        .logout-btn { color: #ef4444 !important; }
+        .logout-btn:hover { background: rgba(239,68,68,0.1) !important; }
+        .main-content { margin-left: 260px; padding: 2rem; }
+        .glass-card { background: #131c2e; border: 1px solid rgba(141,163,194,0.08); border-radius: 1rem; }
+        .input-field { background: rgba(11,15,26,0.6); border: 1px solid rgba(141,163,194,0.15); color: #e8eef8; }
+        .input-field:focus { border-color: #00d4aa; box-shadow: 0 0 0 3px rgba(0,212,170,0.1); outline: none; }
+        textarea.input-field { min-height: 100px; resize: vertical; }
+    </style>
+</head>
+<body x-data="notesPage()" x-init="init()">
+    <div x-html="getSidebar('doctor', 'clinical-notes')"></div>
+    <main class="main-content">
+        <h1 class="text-2xl font-bold mb-2">Clinical Notes</h1>
+        <p class="text-[#8da3c2] text-sm mb-8">Create SOAP notes and clinical documentation</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Note Form -->
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4 flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5 text-teal-400"></i> New Clinical Note</h2>
+                <form @submit.prevent="createNote()" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-[#8da3c2] mb-1">Patient ID</label>
+                        <input x-model="form.patient_id" type="number" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="Enter patient ID">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#8da3c2] mb-1">Record Type</label>
+                        <select x-model="form.record_type" class="input-field w-full px-3 py-2.5 rounded-xl text-sm">
+                            <option value="note">SOAP Note</option>
+                            <option value="diagnosis">Diagnosis</option>
+                            <option value="procedure">Procedure</option>
+                            <option value="referral">Referral</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#8da3c2] mb-1">Title</label>
+                        <input x-model="form.title" type="text" required class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="e.g. Follow-up Consultation">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#8da3c2] mb-1">ICD-10 Code (optional)</label>
+                        <input x-model="form.icd10_code" type="text" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" placeholder="e.g. E11.9">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#8da3c2] mb-1">Notes</label>
+                        <textarea x-model="form.notes" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" rows="6" placeholder="S: Subjective
+O: Objective
+A: Assessment
+P: Plan"></textarea>
+                    </div>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-medium bg-teal-500 text-[#0B0F1A] hover:bg-teal-400 transition-all w-full">Save Note</button>
+                </form>
+            </div>
+
+            <!-- Recent Notes -->
+            <div class="glass-card p-6">
+                <h2 class="font-semibold mb-4">Recent Notes</h2>
+                <div class="space-y-3 max-h-[600px] overflow-y-auto">
+                    <template x-for="rec in records" :key="rec.id">
+                        <div class="p-4 rounded-xl bg-[#0B0F1A]/40">
+                            <div class="flex items-start justify-between mb-2">
+                                <div>
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-teal-500/20 text-teal-400" x-text="rec.record_type"></span>
+                                    <span class="text-sm font-medium ml-2" x-text="rec.title"></span>
+                                </div>
+                                <span class="text-xs text-[#4a6288]" x-text="formatDate(rec.created_at)"></span>
+                            </div>
+                            <p x-show="rec.icd10_code" class="text-xs text-[#4a6288] mb-1">ICD-10: <span x-text="rec.icd10_code"></span></p>
+                            <p class="text-sm text-[#8da3c2] whitespace-pre-line" x-text="rec.notes"></p>
+                        </div>
+                    </template>
+                    <p x-show="records.length === 0" class="text-center text-[#4a6288] py-8">No notes yet</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function notesPage() {
+            return {
+                form: { patient_id: new URLSearchParams(window.location.search).get('patient_id') || '', record_type: 'note', title: '', icd10_code: '', notes: '' },
+                records: [],
+                async init() {
+                    guardRoute(['doctor']);
+                    await this.loadRecords();
+                    this.$nextTick(() => lucide.createIcons());
+                },
+                async loadRecords() {
+                    try {
+                        const pid = this.form.patient_id;
+                        if (pid) { this.records = await apiGet(`/api/records?patient_id=${pid}`) || []; }
+                    } catch(e) { console.error(e); }
+                },
+                async createNote() {
+                    try {
+                        await apiPost('/api/records', this.form);
+                        showToast('Note saved!');
+                        this.form.title = '';
+                        this.form.icd10_code = '';
+                        this.form.notes = '';
+                        await this.loadRecords();
+                        this.$nextTick(() => lucide.createIcons());
+                    } catch(e) { showToast(e.message, 'error'); }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
