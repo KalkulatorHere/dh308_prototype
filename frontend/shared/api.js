@@ -3,7 +3,12 @@
 // All API calls go through this module
 // ──────────────────────────────────────────────
 
-const API_BASE = 'http://localhost:8000';
+// In development: http://localhost:8000
+// In production: replace with your Railway backend URL
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:8000'
+  : 'https://YOUR-RAILWAY-BACKEND-URL.up.railway.app';
+
 
 /**
  * Make an authenticated API request.

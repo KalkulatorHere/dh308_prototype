@@ -1,0 +1,12 @@
+# netlify.toml — Tells Netlify how to deploy the frontend
+[build]
+  # The folder to publish (all static HTML/JS/CSS)
+  publish = "frontend"
+
+# No build command needed — it's plain HTML, no npm/webpack
+
+# Redirect all routes to index.html (prevents 404 on direct URL access)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
