@@ -63,7 +63,8 @@ function logout() {
     localStorage.removeItem('medicore_refresh');
     localStorage.removeItem('medicore_role');
     localStorage.removeItem('medicore_user_id');
-    window.location.href = '/app/index.html';
+    const base = window.location.pathname.startsWith('/app') ? '/app' : '';
+    window.location.href = `${base}/index.html`;
 }
 
 /**
@@ -72,7 +73,8 @@ function logout() {
  */
 function guardRoute(allowedRoles) {
     if (!isLoggedIn()) {
-        window.location.href = '/app/index.html';
+        const base = window.location.pathname.startsWith('/app') ? '/app' : '';
+        window.location.href = `${base}/index.html`;
         return false;
     }
     const role = getRole();
@@ -89,21 +91,23 @@ function guardRoute(allowedRoles) {
  */
 function redirectToDashboard() {
     const role = getRole();
+    const base = window.location.pathname.startsWith('/app') ? '/app' : '';
+    
     switch (role) {
         case 'patient':
-            window.location.href = '/app/patient/dashboard.html';
+            window.location.href = `${base}/patient/dashboard.html`;
             break;
         case 'doctor':
-            window.location.href = '/app/doctor/dashboard.html';
+            window.location.href = `${base}/doctor/dashboard.html`;
             break;
         case 'lab_tech':
-            window.location.href = '/app/lab/queue.html';
+            window.location.href = `${base}/lab/queue.html`;
             break;
         case 'admin':
-            window.location.href = '/app/admin/dashboard.html';
+            window.location.href = `${base}/admin/dashboard.html`;
             break;
         default:
-            window.location.href = '/app/index.html';
+            window.location.href = `${base}/index.html`;
     }
 }
 

@@ -43,7 +43,8 @@ async function apiRequest(endpoint, options = {}) {
         localStorage.removeItem('medicore_refresh');
         localStorage.removeItem('medicore_role');
         localStorage.removeItem('medicore_user_id');
-        window.location.href = '/app/index.html';
+        const base = window.location.pathname.startsWith('/app') ? '/app' : '';
+        window.location.href = `${base}/index.html`;
         return;
     }
 

@@ -5,8 +5,9 @@
 
 # No build command needed — it's plain HTML, no npm/webpack
 
-# Redirect all routes to index.html (prevents 404 on direct URL access)
+# Only redirect truly missing paths (404s) back to login
+# Do NOT use status=200 catch-all — that would intercept real .html files
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200
+  status = 404
