@@ -61,13 +61,19 @@ app.include_router(consents.router)
 app.include_router(appointments.router)
 app.include_router(admin.router)
 
+# ── Serve frontend static files (local dev only, MUST be last) ─
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
-# ── Root endpoint — redirect to login ─────────
+# ── Root endpoint ──────────────────────────────
 @app.get("/")
 def root():
-    return RedirectResponse(url="/app/index.html")
+    """In local dev: redirect to frontend. In production: frontend is on Netlify."""
+    if os.path.isdir(FRONTEND_DIR):
+        return RedirectResponse(url="/app/index.html")
+    return {"message": "MediCore API is running. Frontend is served separately on Netlify."}
 
-# ── Serve frontend static files (MUST be last) ─
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
+
 
