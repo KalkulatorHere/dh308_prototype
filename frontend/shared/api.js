@@ -6,8 +6,8 @@
 // In development: http://localhost:8000
 // In production: replace with your Railway backend URL
 const API_BASE = window.location.hostname === 'localhost'
-  ? 'http://localhost:8000'
-  : 'https://YOUR-RAILWAY-BACKEND-URL.up.railway.app';
+    ? 'http://localhost:8000'
+    : 'adventurous-celebration-production-e39c.up.railway.app';
 
 
 /**
@@ -16,7 +16,7 @@ const API_BASE = window.location.hostname === 'localhost'
  */
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('medicore_token');
-    
+
     const headers = {
         ...(options.headers || {})
     };
