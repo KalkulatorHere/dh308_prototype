@@ -19,8 +19,9 @@ from routes import auth, patients, records, vitals, prescriptions, labs, consent
 # ── Validate production secrets at startup ─────
 settings.validate_production()
 
-# ── Create tables ─────────────────────────────
-Base.metadata.create_all(bind=engine)
+# ── Auto-Seed Database on Startup ─────────────
+from seed import run_seed
+run_seed()
 
 # ── FastAPI app ───────────────────────────────
 # Disable interactive docs in production (no /docs or /redoc exposure)
