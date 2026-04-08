@@ -11,6 +11,8 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "30"
       - key: REFRESH_TOKEN_EXPIRE_DAYS
