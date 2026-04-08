@@ -4,10 +4,10 @@
 // ──────────────────────────────────────────────
 
 // In development: http://localhost:8000
-// In production: replace with your Railway backend URL
+// In production: your Render backend URL (update after deploying to Render)
 const API_BASE = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
-    : 'https://adventurous-celebration-production-e39c.up.railway.app';
+    : 'https://YOUR_RENDER_APP.onrender.com';
 
 
 /**

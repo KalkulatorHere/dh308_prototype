@@ -86,7 +86,7 @@
                     </div>
 
                     <div x-show="report.file_path" class="mt-4">
-                        <a :href="'http://localhost:8000/api/lab-reports/' + report.id + '/download'" target="_blank" 
+                        <a :href="API_BASE + '/api/lab-reports/' + report.id + '/download'" target="_blank" 
                             class="inline-flex items-center gap-2 text-sm text-teal-400 hover:text-teal-300 transition-colors">
                             <i data-lucide="download" class="w-4 h-4"></i> Download PDF
                         </a>
