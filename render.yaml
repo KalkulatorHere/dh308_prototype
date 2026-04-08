@@ -18,6 +18,6 @@ services:
       - key: REFRESH_TOKEN_EXPIRE_DAYS
         value: "7"
       - key: ALLOWED_ORIGINS
-        value: https://YOUR_NETLIFY_SITE.netlify.app
+        value: https://remarkable-salmiakki-62079a.netlify.app/
       - key: DATABASE_URL
         value: sqlite:///./medicore.db
