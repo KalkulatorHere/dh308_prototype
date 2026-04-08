@@ -7,7 +7,7 @@
 // In production: your Render backend URL (update after deploying to Render)
 const API_BASE = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
-    : 'https://YOUR_RENDER_APP.onrender.com';
+    : 'https://dh308-prototype-1.onrender.com';
 
 
 /**
